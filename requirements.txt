@@ -1,0 +1,6 @@
+django>=5.0,<6.0
+djangorestframework
+django-cors-headers
+python-dotenv
+psycopg2-binary
+argon2-cffi

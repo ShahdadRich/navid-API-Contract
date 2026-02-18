@@ -1,0 +1,586 @@
+openapi: 3.1.0
+info:
+  title: Navid API Contract
+  version: 1.0.0
+  description: |
+    Navid API v1 contract for authentication and onboarding.
+    This spec is designed for cookie-based session auth.
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://api.navid.ai
+    description: Production
+security: []
+tags:
+  - name: Auth
+  - name: Onboarding
+paths:
+  /api/v1/auth/signup/start:
+    post:
+      tags: [Auth]
+      summary: Start signup with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupStartRequest'
+      responses:
+        '201':
+          description: Signup started, verification challenge issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignupStartResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/EmailAlreadyExists'
+
+  /api/v1/auth/signup/resend-code:
+    post:
+      tags: [Auth]
+      summary: Resend signup verification code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupResendCodeRequest'
+      responses:
+        '204':
+          description: Code resent
+        '410':
+          $ref: '#/components/responses/SignupTokenExpired'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /api/v1/auth/signup/verify-code:
+    post:
+      tags: [Auth]
+      summary: Verify signup email code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupVerifyCodeRequest'
+      responses:
+        '200':
+          description: Email code verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignupVerifyCodeResponse'
+        '400':
+          $ref: '#/components/responses/InvalidCode'
+        '410':
+          $ref: '#/components/responses/CodeExpired'
+
+  /api/v1/auth/signup/complete-profile:
+    post:
+      tags: [Auth]
+      summary: Complete signup profile and create session
+      description: |
+        Validates age >= 18 using current date, activates account, and creates session cookie.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupCompleteProfileRequest'
+      responses:
+        '201':
+          description: Account created and authenticated session started
+          headers:
+            Set-Cookie:
+              description: Session cookie (HttpOnly)
+              schema:
+                type: string
+                example: session=SESSION_ID_OR_JWT; Path=/api; HttpOnly; SameSite=Lax; Max-Age=1209600; Secure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '410':
+          $ref: '#/components/responses/SignupTokenExpired'
+        '422':
+          $ref: '#/components/responses/Underage'
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authenticated session started
+          headers:
+            Set-Cookie:
+              description: Session cookie (HttpOnly)
+              schema:
+                type: string
+                example: session=SESSION_ID_OR_JWT; Path=/api; HttpOnly; SameSite=Lax; Max-Age=1209600; Secure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          $ref: '#/components/responses/InvalidCredentials'
+
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current session
+      description: |
+        Returns null when no valid session cookie exists, otherwise returns a Session object.
+      responses:
+        '200':
+          description: Session check result
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: 'null'
+                  - $ref: '#/components/schemas/Session'
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout current session
+      security:
+        - cookieAuth: []
+      responses:
+        '204':
+          description: Session invalidated and cookie cleared
+          headers:
+            Set-Cookie:
+              description: Clears the session cookie
+              schema:
+                type: string
+                example: session=; Path=/api; HttpOnly; Max-Age=0; SameSite=Lax; Secure
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Trigger password reset email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '204':
+          description: Accepted (always no content to avoid account enumeration)
+
+  /api/v1/auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset password using reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '204':
+          description: Password reset successfully
+        '400':
+          $ref: '#/components/responses/InvalidToken'
+
+  /api/v1/onboarding/progress:
+    patch:
+      tags: [Onboarding]
+      summary: Save onboarding progress (optional)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnboardingRequest'
+      responses:
+        '200':
+          description: Onboarding progress saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingProgressResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/onboarding/complete:
+    post:
+      tags: [Onboarding]
+      summary: Complete onboarding
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnboardingRequest'
+      responses:
+        '200':
+          description: Onboarding completed, session updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [message, code]
+      properties:
+        message:
+          type: string
+          description: Human-readable error message.
+        code:
+          type: string
+          description: Stable machine-readable error code.
+        details:
+          description: Optional structured error details.
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: 'null'
+
+    Session:
+      type: object
+      required: [userId, email, onboardingComplete]
+      properties:
+        userId:
+          type: string
+          example: usr_123
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        name:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: 'null'
+          example: Jane Doe
+        onboardingComplete:
+          type: boolean
+          example: false
+
+    SignupVerification:
+      type: object
+      required: [channel, codeLength, expiresAt, resendAvailableAt]
+      properties:
+        channel:
+          type: string
+          enum: [email]
+        codeLength:
+          type: integer
+          minimum: 4
+          maximum: 8
+          example: 6
+        expiresAt:
+          type: string
+          format: date-time
+          example: '2026-02-16T10:35:00.000Z'
+        resendAvailableAt:
+          type: string
+          format: date-time
+          example: '2026-02-16T10:21:00.000Z'
+
+    SignupStartRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          minLength: 8
+          example: strong-password
+
+    SignupStartResponse:
+      type: object
+      required: [signupToken, email, verification]
+      properties:
+        signupToken:
+          type: string
+          example: st_abc123
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        verification:
+          $ref: '#/components/schemas/SignupVerification'
+
+    SignupResendCodeRequest:
+      type: object
+      required: [signupToken]
+      properties:
+        signupToken:
+          type: string
+          example: st_abc123
+
+    SignupVerifyCodeRequest:
+      type: object
+      required: [signupToken, code]
+      properties:
+        signupToken:
+          type: string
+          example: st_abc123
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          example: '123456'
+
+    SignupVerifyCodeResponse:
+      type: object
+      required: [signupToken, emailVerified]
+      properties:
+        signupToken:
+          type: string
+          example: st_abc123
+        emailVerified:
+          type: boolean
+          example: true
+
+    SignupCompleteProfileRequest:
+      type: object
+      required: [signupToken, fullName, birthDate]
+      properties:
+        signupToken:
+          type: string
+          example: st_abc123
+        fullName:
+          type: string
+          minLength: 2
+          example: Jane Doe
+        birthDate:
+          type: string
+          format: date
+          description: YYYY-MM-DD
+          example: '2000-08-24'
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          minLength: 8
+          example: strong-password
+
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+
+    ResetPasswordRequest:
+      type: object
+      required: [token, password]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          example: reset-token
+        password:
+          type: string
+          minLength: 8
+          example: new-strong-password
+
+    OnboardingRequest:
+      type: object
+      required: [intent, goals]
+      properties:
+        intent:
+          type: string
+          enum: [school, work, personal_tasks, fun_and_entertainment, other]
+          example: work
+        goals:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum:
+              - create_something
+              - plan_a_trip
+              - brainstorm
+              - plan_something
+              - search
+              - write_or_edit
+              - learn_and_study
+              - get_organized
+              - get_step_by_step_help
+              - shop_smarter
+              - stay_healthy
+              - manage_money
+              - code_or_debug
+              - analyze_data
+              - grow_professionally
+          uniqueItems: true
+          example: [code_or_debug, analyze_data, brainstorm]
+
+    OnboardingProgressResponse:
+      type: object
+      required: [intent, goals, onboardingComplete]
+      properties:
+        intent:
+          type: string
+          enum: [school, work, personal_tasks, fun_and_entertainment, other]
+          example: work
+        goals:
+          type: array
+          items:
+            type: string
+          example: [code_or_debug, analyze_data, brainstorm]
+        onboardingComplete:
+          type: boolean
+          example: false
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            message: Validation failed.
+            code: VALIDATION_ERROR
+            details: {}
+
+    EmailAlreadyExists:
+      description: Email already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            message: This email is already registered.
+            code: EMAIL_ALREADY_EXISTS
+            details: {}
+
+    SignupTokenExpired:
+      description: Signup token expired
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            message: Signup session expired. Please restart signup.
+            code: SIGNUP_TOKEN_EXPIRED
+            details: {}
+
+    RateLimited:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            message: Too many requests. Try again later.
+            code: RATE_LIMITED
+            details: {}
+
+    InvalidCode:
+      description: Invalid verification code
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            message: Verification code is invalid.
+            code: INVALID_CODE
+            details: {}
+
+    CodeExpired:
+      description: Verification code expired
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            message: Verification code expired.
+            code: CODE_EXPIRED
+            details: {}
+
+    Underage:
+      description: User is under 18
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            message: You must be at least 18 years old to use Navid AI.
+            code: UNDERAGE
+            details: {}
+
+    InvalidCredentials:
+      description: Invalid email or password
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            message: Invalid email or password.
+            code: INVALID_CREDENTIALS
+            details: {}
+
+    InvalidToken:
+      description: Invalid or expired reset token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            message: Reset token is invalid or expired.
+            code: INVALID_TOKEN
+            details: {}
+
+    Unauthorized:
+      description: Missing or invalid session
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            message: Authentication required.
+            code: UNAUTHORIZED
+            details: {}
