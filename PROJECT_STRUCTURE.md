@@ -21,6 +21,17 @@
 │       ├── serializers.py
 │       ├── urls.py
 │       └── views.py
+│   └── chat/                    # Chat & History Logic
+│       ├── migrations/
+│       ├── services/            # Service Layer (Chat, LLM)
+│       ├── apps.py
+│       ├── models.py            # Conversation and Message models
+│       ├── pagination.py        # Cursor and PageNumber pagination
+│       ├── permissions.py       # IsConversationOwner
+│       ├── serializers.py
+│       ├── tasks.py             # Celery tasks (Auto-titling)
+│       ├── urls.py
+│       └── views.py             # Chat API endpoints
 ├── config/                      # Project Configuration
 │   ├── settings/                # Django Settings (split by env)
 │   │   ├── base.py
@@ -45,6 +56,7 @@
 | `apps/` | Contains all modular business logic. Each subdirectory is a Django app. |
 | `apps/authentication/` | Handles user registration, multi-step signup, login, and session management. |
 | `apps/onboarding/` | Manages post-signup user data collection and progress tracking. |
+| `apps/chat/` | Handles AI conversations, thread history, and background auto-titling. |
 | `config/` | Root configuration, routing, and deployment entry points. |
 | `config/settings/` | Environment-specific configuration using a base/inheritance pattern. |
 | `core/` | Shared utilities, custom middleware, and global exception handlers used across all apps. |
