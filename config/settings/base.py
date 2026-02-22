@@ -134,6 +134,12 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 
+# LLM Settings
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "mock")  # Options: mock, openai
+LLM_API_KEY = os.getenv("LLM_API_KEY", "sk-mock-key")
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o")
+
 # REST Framework Settings
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [

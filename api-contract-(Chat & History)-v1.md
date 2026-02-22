@@ -184,9 +184,9 @@ Returns the AI's generated message.
 
 ---
 
-## 4) Streaming AI Responses (Optional but Recommended)
+## 4) Streaming AI Responses (Required)
 
-If the frontend requires a typing effect (like ChatGPT), use Server-Sent Events (SSE).
+To provide a modern AI experience (typing effect), we use Server-Sent Events (SSE).
 
 `POST /api/v1/chat/conversations/{conversationId}/messages/stream`
 
