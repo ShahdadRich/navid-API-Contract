@@ -10,6 +10,8 @@ from apps.chat.services.llm_service import LLMService
 
 def test_llm_connectivity():
     print(f"Testing LLM Provider: {settings.LLM_PROVIDER}")
+    print(f"Base URL: {settings.LLM_BASE_URL}")
+    print(f"Model: {settings.LLM_MODEL}")
     llm = LLMService()
 
     messages = [{"role": "user", "content": "Say hello!"}]
