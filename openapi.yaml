@@ -16,6 +16,7 @@ tags:
   - name: Auth
   - name: Onboarding
   - name: Chat
+    description: AI Conversational endpoints including history management and real-time streaming.
 paths:
   /api/v1/auth/signup/start:
     post:
