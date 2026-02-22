@@ -54,7 +54,8 @@ class OpenAIService(BaseLLMService):
 class LLMService:
     def __init__(self):
         provider_type = getattr(settings, "LLM_PROVIDER", "mock")
-        if provider_type == "openai":
+        # Most local providers (Ollama, vLLM, LM Studio) use the OpenAI-compatible API
+        if provider_type in ["openai", "local"]:
             self.provider = OpenAIService()
         else:
             self.provider = MockLLMService()

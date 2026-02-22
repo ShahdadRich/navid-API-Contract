@@ -135,7 +135,9 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 
 # LLM Settings
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "mock")  # Options: mock, openai
+# LLM_PROVIDER: Choose 'mock' (default), 'openai', or 'local'.
+# 'local' uses the OpenAI-compatible API for tools like Ollama or LM Studio.
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "mock")
 LLM_API_KEY = os.getenv("LLM_API_KEY", "sk-mock-key")
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o")
