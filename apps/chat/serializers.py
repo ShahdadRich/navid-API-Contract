@@ -15,8 +15,11 @@ class MessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Message
-        fields = ["id", "role", "content", "createdAt"]
+        fields = ["id", "role", "content", "feedback", "createdAt"]
         read_only_fields = ["id", "createdAt"]
 
 class MessageCreateSerializer(serializers.Serializer):
     content = serializers.CharField(required=True)
+
+class FeedbackSerializer(serializers.Serializer):
+    feedback = serializers.ChoiceField(choices=Message.Feedback.choices)

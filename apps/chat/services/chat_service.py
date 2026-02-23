@@ -1,3 +1,4 @@
+from rest_framework.exceptions import ValidationError
 from ..models import Message, Conversation
 from .llm_service import LLMService
 
@@ -6,6 +7,11 @@ class ChatService:
         self.llm_service = LLMService()
 
     def create_user_message(self, conversation, content):
+        # Mandatory Feedback Logic
+        last_message = conversation.messages.last()
+        if last_message and last_message.role == Message.Role.ASSISTANT and last_message.feedback is None:
+            raise ValidationError("You must rate the previous AI response (Good/Bad) before sending a new message.")
+
         message = Message.objects.create(
             conversation=conversation,
             role=Message.Role.USER,

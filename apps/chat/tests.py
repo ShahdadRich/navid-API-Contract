@@ -109,6 +109,40 @@ class TestConversationEndpoints:
         # Verify messages in DB
         assert Message.objects.filter(conversation=conv).count() == 2
 
+    def test_mandatory_feedback_logic(self, api_client, user):
+        api_client.force_authenticate(user=user)
+        conv = Conversation.objects.create(user=user)
+        url = reverse("conversation-messages", args=[conv.id])
+
+        # 1. Send first message
+        api_client.post(url, {"content": "Hello AI"})
+
+        # 2. Try to send second message immediately (should be blocked)
+        response = api_client.post(url, {"content": "Another message"})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "You must rate the previous AI response" in str(response.data)
+
+        # 3. Provide feedback
+        ai_message = Message.objects.filter(conversation=conv, role="assistant").last()
+        feedback_url = reverse("message-feedback", args=[ai_message.id])
+        response = api_client.patch(feedback_url, {"feedback": "good"})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["feedback"] == "good"
+
+        # 4. Send second message again (should succeed)
+        response = api_client.post(url, {"content": "Another message"})
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_feedback_only_for_assistant(self, api_client, user):
+        api_client.force_authenticate(user=user)
+        conv = Conversation.objects.create(user=user)
+        user_msg = Message.objects.create(conversation=conv, role="user", content="Hi")
+
+        feedback_url = reverse("message-feedback", args=[user_msg.id])
+        response = api_client.patch(feedback_url, {"feedback": "good"})
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "Only assistant messages can be rated." in str(response.data)
+
     def test_auto_titling(self, api_client, user):
         api_client.force_authenticate(user=user)
         conv = Conversation.objects.create(user=user, title="New Chat")
