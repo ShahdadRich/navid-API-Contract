@@ -149,7 +149,7 @@ The frontend is DUMB regarding history. It ONLY sends the new message.
 (Frontend Note: On receiving 200 OK for the FIRST message of a new chat, quietly call `GET /conversations` in the background to refresh the sidebar, as the backend will have auto-generated the title by then).
 
 Errors: 400 VALIDATION_ERROR, 403 FORBIDDEN, 404 NOT_FOUND, 429 RATE_LIMITED, 503 SERVICE_UNAVAILABLE
-
+---
 ### 3.3 Rate AI Message (Feedback)
 `PATCH /api/v1/chat/messages/{messageId}/feedback`
 
@@ -160,7 +160,21 @@ Errors: 400 VALIDATION_ERROR, 403 FORBIDDEN, 404 NOT_FOUND, 429 RATE_LIMITED, 50
 {
   "feedback": "good" // Enum: "good", "bad"
 }
-
+Backend returns 200:
+Returns the updated Message object.
+code
+JSON
+{
+  "id": "msg_123e4567",
+  "role": "assistant",
+  "content": "Sure, here is the React version...",
+  "createdAt": "2026-02-16T14:32:00.000Z",
+  "feedback": "good"
+}
+Errors:
+400 VALIDATION_ERROR (Invalid feedback value)
+403 FORBIDDEN (Trying to rate someone else's message)
+404 NOT_FOUND (Message does not exist)
 ---
 
 ## 4) Streaming AI Responses (Optional but Recommended)
