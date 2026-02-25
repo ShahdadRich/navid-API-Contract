@@ -30,8 +30,9 @@ The signup flow is split into multiple stages to ensure data integrity and email
 ### Chat & Messaging Flow
 1.  **Entry Point**: `POST /api/v1/chat/conversations/{id}/messages` (Standard) or `/stream` (SSE).
 2.  **Security**: `IsConversationOwner` permission validates that the user owns the thread.
-3.  **Logic Layer**: `ChatService` handles message persistence and calls `LLMService` for AI responses.
-4.  **Streaming**: `StreamingHttpResponse` delivers SSE chunks for a typing effect.
+3.  **Context Assembly**: `ChatService` fetches the last 10 messages from the database to provide history/memory to the LLM.
+4.  **Logic Layer**: `ChatService` handles message persistence and calls `LLMService` for AI responses.
+5.  **Streaming**: `StreamingHttpResponse` delivers SSE chunks for a typing effect.
 5.  **Background Task**: If it's the first exchange, `generate_title_task` (Celery) is triggered to update the conversation title.
 
 ## Core Components (Source of Truth)

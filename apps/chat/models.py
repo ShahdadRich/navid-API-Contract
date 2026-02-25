@@ -25,6 +25,10 @@ class Message(models.Model):
         ASSISTANT = "assistant", "Assistant"
         SYSTEM = "system", "System"
 
+    class Feedback(models.TextChoices):
+        GOOD = "good", "Good"
+        BAD = "bad", "Bad"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.ForeignKey(
         Conversation,
@@ -33,6 +37,12 @@ class Message(models.Model):
     )
     role = models.CharField(max_length=20, choices=Role.choices)
     content = models.TextField()
+    feedback = models.CharField(
+        max_length=10,
+        choices=Feedback.choices,
+        null=True,
+        blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

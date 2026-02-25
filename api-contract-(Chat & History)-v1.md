@@ -18,16 +18,13 @@ All chat-related endpoints are prefixed with:
 
 These endpoints power the sidebar ("All History").
 
-## 2.1 List Conversations (Sidebar)
-
+### 2.1 List Conversations (Sidebar)
 `GET /api/v1/chat/conversations`
 
-### Frontend sends
+**Frontend sends:**
 - Query Params (optional): `?page=1&size=20`
 
-### Backend returns `200`
-Ordered by `updated_at` descending (newest active chats first).
-
+**Backend returns `200`:** (Ordered by `updated_at` descending)
 ```json
 {
   "count": 45,
@@ -49,18 +46,14 @@ Ordered by `updated_at` descending (newest active chats first).
   ]
 }
 ```
+Errors: 401 UNAUTHORIZED
 
-### Errors
-- `401 UNAUTHORIZED`
-
-## 2.2 Create New Conversation
-
+### 2.2 Create New Conversation
 `POST /api/v1/chat/conversations`
 
-### Frontend sends
-- Empty body `{}` (or optional initial system prompt/settings).
+**Frontend sends:** Empty body `{}`
 
-### Backend returns `201`
+**Backend returns 201:**
 ```json
 {
   "id": "conv_9x8y7z",
@@ -70,18 +63,17 @@ Ordered by `updated_at` descending (newest active chats first).
 }
 ```
 
-## 2.3 Update Conversation Title (Rename)
-
+### 2.3 Update Conversation Title (Rename)
 `PATCH /api/v1/chat/conversations/{conversationId}`
 
-### Frontend sends
+**Frontend sends:**
 ```json
 {
   "title": "My Custom Title"
 }
 ```
 
-### Backend returns `200`
+**Backend returns 200:**
 ```json
 {
   "id": "conv_9x8y7z",
@@ -89,34 +81,24 @@ Ordered by `updated_at` descending (newest active chats first).
   "updatedAt": "2026-02-16T16:05:00.000Z"
 }
 ```
+Errors: 403 FORBIDDEN (Not the owner), 404 NOT_FOUND
 
-### Errors
-- `403 FORBIDDEN` (Not the owner)
-- `404 NOT_FOUND`
-
-## 2.4 Delete Conversation
-
+### 2.4 Delete Conversation
 `DELETE /api/v1/chat/conversations/{conversationId}`
 
-### Backend returns
-- `204 No Content` (Cascade deletes all related messages)
+**Backend returns:** 204 No Content (Cascade deletes all related messages)
 
 ---
 
 ## 3) Message Endpoints
-
 These endpoints power the main chat window.
 
-## 3.1 List Messages for a Conversation
-
+### 3.1 List Messages for a Conversation
 `GET /api/v1/chat/conversations/{conversationId}/messages`
 
-### Frontend sends
-- Query Params: `?cursor=...` (For loading older messages when scrolling up).
+**Frontend sends:** Query Params: `?cursor=...` (For scrolling up).
 
-### Backend returns `200`
-Ordered by `created_at` ascending (oldest to newest for proper chat UI display).
-
+**Backend returns 200:** (Ordered by `created_at` ascending)
 ```json
 {
   "nextCursor": null,
@@ -131,82 +113,64 @@ Ordered by `created_at` ascending (oldest to newest for proper chat UI display).
     {
       "id": "msg_112",
       "role": "assistant",
-      "content": "You can use flexbox: `display: flex; justify-content: center; align-items: center;`",
+      "content": "You can use flexbox...",
       "createdAt": "2026-02-16T14:30:05.000Z"
     }
   ]
 }
 ```
+Errors: 403 FORBIDDEN, 404 NOT_FOUND
 
-### Errors
-- `403 FORBIDDEN` (Trying to view someone else's chat)
-- `404 NOT_FOUND`
-
-## 3.2 Send a Message (Standard JSON / Non-Streaming)
-
-*Note: For modern AI apps, Server-Sent Events (SSE) streaming is preferred. This is the standard blocking fallback.*
-
+### 3.2 Send a Message (Logic & Context Management)
 `POST /api/v1/chat/conversations/{conversationId}/messages`
 
-### Frontend sends
+**Frontend sends:**
+The frontend is DUMB regarding history. It ONLY sends the new message.
 ```json
 {
-  "content": "Can you give me an example in Tailwind?"
+  "content": "Can you convert that to React?"
 }
 ```
 
-### Backend behavior
-1. Saves the User's message to the database.
-2. Sends the conversation history to the AI Model (OpenAI/Gemini/Local LLM).
-3. Receives AI response.
-4. Saves the AI's message to the database.
-5. Updates `Conversation.updated_at`.
-6. (Async) If this is the first interaction, triggers the Auto-Titling job.
+**Backend Internal Behavior (Strict Requirements):**
+1.  **Context Assembly (Memory):** Backend queries the DB for the last ~10 messages of this conversationId, appends the new user message, and sends the entire array to the LLM.
+2.  **Persistence:** Save both the User message and AI response to the DB. Update `Conversation.updated_at`.
+3.  **Auto-Titling (Background Job):** If this is the first interaction (total msg count = 2), do not block the main thread. Dispatch a background worker (e.g., Celery) to use a cheaper LLM to generate a 3-5 word title and update `Conversation.title`.
 
-### Backend returns `200`
-Returns the AI's generated message.
-
+**Backend returns 200:**
 ```json
 {
   "id": "msg_114",
   "role": "assistant",
-  "content": "Sure! In Tailwind, you can use `flex justify-center items-center`.",
+  "content": "Sure, here is the React version...",
   "createdAt": "2026-02-16T14:32:00.000Z"
 }
 ```
+(Frontend Note: On receiving 200 OK for the FIRST message of a new chat, quietly call `GET /conversations` in the background to refresh the sidebar, as the backend will have auto-generated the title by then).
 
-### Errors
-- `400 VALIDATION_ERROR` (Empty message)
-- `403 FORBIDDEN`
-- `404 NOT_FOUND`
-- `429 RATE_LIMITED` (Prevent API abuse)
-- `503 SERVICE_UNAVAILABLE` (AI Provider is down)
+Errors: 400 VALIDATION_ERROR, 403 FORBIDDEN, 404 NOT_FOUND, 429 RATE_LIMITED, 503 SERVICE_UNAVAILABLE
 
 ---
 
-## 4) Streaming AI Responses (Required)
-
-To provide a modern AI experience (typing effect), we use Server-Sent Events (SSE).
+## 4) Streaming AI Responses (Optional but Recommended)
+If the frontend requires a typing effect (like ChatGPT), use Server-Sent Events (SSE).
 
 `POST /api/v1/chat/conversations/{conversationId}/messages/stream`
 
-### Frontend Headers
-- `Accept: text/event-stream`
+**Frontend Headers:** `Accept: text/event-stream`
 
-### Backend returns `200 OK` (Chunked transfer encoding)
-Events are sent as text:
-
+**Backend returns 200 OK (Chunked transfer encoding):**
 ```text
 data: {"chunk": "Sure!"}
-data: {"chunk": " In Tailwind, you can"}
-data: {"chunk": " use `flex`."}
+data: {"chunk": " Here is the"}
+data: {"chunk": " React code."}
 data: {"status": "done", "fullMessageId": "msg_114"}
 ```
+
+---
 
 ### Important Notes for Your Development Team
 
 1.  **Database Separation (Normalization)**: Notice that we separated `Conversation` (thread headers) from `Messages` (chat content). This is the exact architectural decision that allows the sidebar (with potentially hundreds of chats) to load in milliseconds when the user logs in, because the heavy text payloads of the actual messages are excluded from the initial query.
 2.  **Security (Ownership Validation)**: For all message-related endpoints (Section 3), the backend MUST verify that the requesting user (`request.user.id`) is the explicit owner of the requested `conversationId`. Failing to validate this tenant isolation must result in a `403 FORBIDDEN` error.
 3.  **Streaming (Typing Effect)**: As outlined in Section 4, if you want your AI bot to stream its response word-by-word (simulating a typing effect like ChatGPT), you must implement Server-Sent Events (SSE) using the `text/event-stream` response type instead of a standard blocking JSON response.
-
-

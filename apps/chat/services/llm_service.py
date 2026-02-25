@@ -6,20 +6,20 @@ from openai import OpenAI
 
 class BaseLLMService(abc.ABC):
     @abc.abstractmethod
-    def get_response(self, messages):
+    def get_response(self, messages, model=None):
         pass
 
     @abc.abstractmethod
-    def get_streaming_response(self, messages):
+    def get_streaming_response(self, messages, model=None):
         pass
 
 class MockLLMService(BaseLLMService):
-    def get_response(self, messages):
+    def get_response(self, messages, model=None):
         # Simulate network delay
         time.sleep(1)
         return "This is a mock response from the AI."
 
-    def get_streaming_response(self, messages):
+    def get_streaming_response(self, messages, model=None):
         response_text = "This is a streaming mock response from the AI."
         for word in response_text.split():
             yield word + " "
@@ -33,17 +33,17 @@ class OpenAIService(BaseLLMService):
         )
         self.model = settings.LLM_MODEL
 
-    def get_response(self, messages):
+    def get_response(self, messages, model=None):
         response = self.client.chat.completions.create(
-            model=self.model,
+            model=model or self.model,
             messages=messages,
             stream=False
         )
         return response.choices[0].message.content
 
-    def get_streaming_response(self, messages):
+    def get_streaming_response(self, messages, model=None):
         stream = self.client.chat.completions.create(
-            model=self.model,
+            model=model or self.model,
             messages=messages,
             stream=True
         )
@@ -60,8 +60,8 @@ class LLMService:
         else:
             self.provider = MockLLMService()
 
-    def get_response(self, messages):
-        return self.provider.get_response(messages)
+    def get_response(self, messages, model=None):
+        return self.provider.get_response(messages, model=model)
 
-    def get_streaming_response(self, messages):
-        return self.provider.get_streaming_response(messages)
+    def get_streaming_response(self, messages, model=None):
+        return self.provider.get_streaming_response(messages, model=model)
