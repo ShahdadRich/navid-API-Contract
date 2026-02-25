@@ -330,6 +330,39 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/v1/chat/messages/{messageId}/feedback:
+    patch:
+      tags: [Chat]
+      summary: Provide feedback for an AI response
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackRequest'
+      responses:
+        '200':
+          description: Feedback saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
     delete:
       tags: [Chat]
       summary: Delete a conversation and its messages
@@ -719,6 +752,10 @@ components:
           enum: [user, assistant, system]
         content:
           type: string
+        feedback:
+          type: string
+          enum: [good, bad]
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -745,6 +782,14 @@ components:
         content:
           type: string
           minLength: 1
+
+    FeedbackRequest:
+      type: object
+      required: [feedback]
+      properties:
+        feedback:
+          type: string
+          enum: [good, bad]
 
   responses:
     ValidationError:

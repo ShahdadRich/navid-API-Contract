@@ -18,11 +18,16 @@ def test_llm_connectivity():
     print(f"Testing LLM Provider: {settings.LLM_PROVIDER}")
     print(f"Base URL: {settings.LLM_BASE_URL}")
     print(f"Model: {settings.LLM_MODEL}")
+    print(f"Titling Model: {settings.LLM_TITLING_MODEL}")
     llm = LLMService()
 
-    messages = [{"role": "user", "content": "Say hello!"}]
+    messages = [
+        {"role": "user", "content": "My name is Jules."},
+        {"role": "assistant", "content": "Hello Jules! How can I help you today?"},
+        {"role": "user", "content": "What is my name?"}
+    ]
 
-    print("\n--- Testing Standard Response ---")
+    print("\n--- Testing Standard Response with Context ---")
     try:
         response = llm.get_response(messages)
         print(f"Response: {response}")

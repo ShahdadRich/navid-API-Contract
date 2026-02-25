@@ -1,7 +1,7 @@
 # CHAT_SYSTEM_CONTEXT.md (Chat & History Intelligence)
 
 ## 1. Domain Overview
-This module handles the core AI conversational capabilities, including thread management (history sidebar), message persistence, and auto-titling. It integrates directly with the existing authentication system (Session-based).
+This module handles the core AI conversational capabilities, including thread management (history sidebar), message persistence, **context window management**, and auto-titling. It integrates directly with the existing authentication system (Session-based).
 
 ## 2. Database Schema (PostgreSQL via Django ORM)
 
@@ -29,14 +29,18 @@ Represents individual messages within a Conversation.
 - **Conversations List (Sidebar)**: Standard DRF `PageNumberPagination` or `CursorPagination` (e.g., 20 items per page).
 - **Messages List (Chat Window)**: `CursorPagination` is highly recommended for infinite scrolling (loading older messages as the user scrolls up).
 
-### 3.2 Auto-Titling (Background Task)
-Generating titles synchronously slows down the user's chat response.
-- **Trigger**: Fired after the *first* AI response in a new conversation.
-- **Execution**: Should be handed off to a background worker (e.g., Celery or Django-Q) to call a lightweight LLM prompt: *"Summarize this in 3-5 words"*.
-- **Updates**: Once the background task generates the title, it updates the `Conversation.title`. The frontend can pick this up via a subsequent `GET` or WebSocket/SSE event.
+### 3.2 Context Management (The Memory Problem)
+LLMs (OpenAI, Gemini, etc.) are inherently stateless. To allow the AI to remember the conversation:
+- **Client-Side**: The frontend is "dumb". It ONLY sends the newly typed message.
+- **Server-Side Assembly**: Before calling the AI provider, the backend must query the `Message` table, fetch the last $N$ messages (e.g., last 10 messages to save token costs), append the new user message, and send the entire array to the AI.
 
-### 3.3 Security & Authorization
-- **Object-Level Permissions**: Every DRF View/ViewSet MUST ensure `request.user == conversation.user`. A user cannot fetch or append messages to another user's `conversation_id`.
+### 3.3 Auto-Titling (Background Task)
+Generating titles synchronously blocks the main thread and slows down the user's chat response.
+- **Trigger**: Fired ONLY after the *first* AI response in a new conversation (when message count is exactly 2).
+- **Execution**: Must be handed off to a background worker (e.g., Celery or Django-Q).
+- **Model Efficiency**: The background worker should use a faster, cheaper LLM (e.g., GPT-3.5-Turbo or Gemini-Flash) with a prompt like: *"Summarize this in 3-5 words"*.
+- **Updates**: Once generated, it updates `Conversation.title`.
+
+### 3.4 Security & Authorization
+- **Object-Level Permissions**: Every DRF View/ViewSet MUST ensure `request.user == conversation.user`.
 - **Authentication**: Requires the standard Session Cookie (`IsAuthenticated` permission). CSRF token required for POST/PATCH/DELETE.
-
-

@@ -1,10 +1,15 @@
 import json
 from django.http import StreamingHttpResponse
-from rest_framework import viewsets, status, response
+from rest_framework import viewsets, status, response, mixins
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from .models import Conversation, Message
-from .serializers import ConversationSerializer, MessageSerializer, MessageCreateSerializer
+from .serializers import (
+    ConversationSerializer,
+    MessageSerializer,
+    MessageCreateSerializer,
+    FeedbackSerializer
+)
 from .permissions import IsConversationOwner
 from .pagination import ConversationPagination, MessageCursorPagination
 from .services.chat_service import ChatService
@@ -75,3 +80,27 @@ class ConversationViewSet(viewsets.ModelViewSet):
                     yield f'data: {json.dumps({"chunk": chunk})}\n\n'
 
         return StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+
+class MessageViewSet(viewsets.GenericViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Message.objects.filter(conversation__user=self.request.user)
+
+    @action(detail=True, methods=["patch"], url_path="feedback")
+    def feedback(self, request, pk=None):
+        message = self.get_object()
+
+        if message.role != Message.Role.ASSISTANT:
+            return response.Response(
+                {"detail": "Only assistant messages can be rated."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = FeedbackSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        message.feedback = serializer.validated_data["feedback"]
+        message.save()
+
+        return response.Response(MessageSerializer(message).data)
