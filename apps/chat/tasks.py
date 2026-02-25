@@ -1,4 +1,5 @@
 from celery import shared_task
+from django.conf import settings
 from .models import Conversation
 from .services.llm_service import LLMService
 
@@ -14,7 +15,10 @@ def generate_title_task(conversation_id):
         llm_service = LLMService()
         prompt = f"Summarize the following user request in 3-5 words to be used as a chat title: {first_message.content}"
 
-        title = llm_service.get_response([{"role": "user", "content": prompt}])
+        title = llm_service.get_response(
+            [{"role": "user", "content": prompt}],
+            model=settings.LLM_TITLING_MODEL
+        )
 
         # Clean up title (remove quotes if any)
         title = title.strip().strip('"').strip("'")

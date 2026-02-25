@@ -141,6 +141,7 @@ LLM_PROVIDER = os.getenv("LLM_PROVIDER", "mock")
 LLM_API_KEY = os.getenv("LLM_API_KEY", "sk-mock-key")
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o")
+LLM_TITLING_MODEL = os.getenv("LLM_TITLING_MODEL", "gpt-4o-mini")
 
 # REST Framework Settings
 REST_FRAMEWORK = {

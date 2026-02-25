@@ -6,6 +6,14 @@ class ChatService:
     def __init__(self):
         self.llm_service = LLMService()
 
+    def _get_context(self, conversation, limit=10):
+        """
+        Fetch the last N messages to provide context for the LLM.
+        """
+        messages = list(conversation.messages.order_by("-created_at")[:limit])
+        messages.reverse()
+        return [{"role": msg.role, "content": msg.content} for msg in messages]
+
     def create_user_message(self, conversation, content):
         # Mandatory Feedback Logic
         last_message = conversation.messages.last()
@@ -22,9 +30,11 @@ class ChatService:
         return message
 
     def get_ai_response(self, conversation, user_content):
-        # 1. Prepare history (optional, for now just the current message)
+        # 1. Prepare history
+        context = self._get_context(conversation)
+
         # 2. Call LLM
-        ai_content = self.llm_service.get_response([{"role": "user", "content": user_content}])
+        ai_content = self.llm_service.get_response(context)
 
         # 3. Save AI message
         ai_message = Message.objects.create(
@@ -44,9 +54,11 @@ class ChatService:
         return ai_message
 
     def stream_ai_response(self, conversation, user_content):
-        # 1. Prepare history (optional)
+        # 1. Prepare history
+        context = self._get_context(conversation)
+
         # 2. Call LLM streaming
-        generator = self.llm_service.get_streaming_response([{"role": "user", "content": user_content}])
+        generator = self.llm_service.get_streaming_response(context)
 
         full_content = ""
         for chunk in generator:
