@@ -41,6 +41,11 @@ Generating titles synchronously blocks the main thread and slows down the user's
 - **Model Efficiency**: The background worker should use a faster, cheaper LLM (e.g., GPT-3.5-Turbo or Gemini-Flash) with a prompt like: *"Summarize this in 3-5 words"*.
 - **Updates**: Once generated, it updates `Conversation.title`.
 
-### 3.4 Security & Authorization
+### 3.4 Mandatory Feedback System
+To improve AI quality, users are required to provide feedback on every AI response.
+- **Enforcement**: The backend blocks new user messages if the most recent message in the conversation is an `assistant` response without a `feedback` value.
+- **Feedback Loop**: Users call the feedback endpoint (`PATCH /messages/{id}/feedback`) to provide a `good` or `bad` rating, which then allows further messaging in that thread.
+
+### 3.5 Security & Authorization
 - **Object-Level Permissions**: Every DRF View/ViewSet MUST ensure `request.user == conversation.user`.
 - **Authentication**: Requires the standard Session Cookie (`IsAuthenticated` permission). CSRF token required for POST/PATCH/DELETE.

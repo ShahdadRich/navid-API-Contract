@@ -133,9 +133,10 @@ The frontend is DUMB regarding history. It ONLY sends the new message.
 ```
 
 **Backend Internal Behavior (Strict Requirements):**
-1.  **Context Assembly (Memory):** Backend queries the DB for the last ~10 messages of this conversationId, appends the new user message, and sends the entire array to the LLM.
-2.  **Persistence:** Save both the User message and AI response to the DB. Update `Conversation.updated_at`.
-3.  **Auto-Titling (Background Job):** If this is the first interaction (total msg count = 2), do not block the main thread. Dispatch a background worker (e.g., Celery) to use a cheaper LLM to generate a 3-5 word title and update `Conversation.title`.
+1.  **Mandatory Feedback Check:** If the last message in the thread is from the `assistant` and its `feedback` field is null, the backend returns `400 VALIDATION_ERROR` blocking the new message.
+2.  **Context Assembly (Memory):** Backend queries the DB for the last ~10 messages of this conversationId, appends the new user message, and sends the entire array to the LLM.
+3.  **Persistence:** Save both the User message and AI response to the DB. Update `Conversation.updated_at`.
+4.  **Auto-Titling (Background Job):** If this is the first interaction (total msg count = 2), do not block the main thread. Dispatch a background worker (e.g., Celery) to use a cheaper LLM to generate a 3-5 word title and update `Conversation.title`.
 
 **Backend returns 200:**
 ```json
@@ -149,6 +150,20 @@ The frontend is DUMB regarding history. It ONLY sends the new message.
 (Frontend Note: On receiving 200 OK for the FIRST message of a new chat, quietly call `GET /conversations` in the background to refresh the sidebar, as the backend will have auto-generated the title by then).
 
 Errors: 400 VALIDATION_ERROR, 403 FORBIDDEN, 404 NOT_FOUND, 429 RATE_LIMITED, 503 SERVICE_UNAVAILABLE
+
+### 3.3 Provide Message Feedback
+`PATCH /api/v1/chat/messages/{messageId}/feedback`
+
+**Frontend sends:**
+```json
+{
+  "feedback": "good"
+}
+```
+*Note: Valid values are `good` or `bad`.*
+
+**Backend returns 200:**
+Returns the updated message object.
 
 ---
 
