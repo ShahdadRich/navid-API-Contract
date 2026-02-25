@@ -150,6 +150,17 @@ The frontend is DUMB regarding history. It ONLY sends the new message.
 
 Errors: 400 VALIDATION_ERROR, 403 FORBIDDEN, 404 NOT_FOUND, 429 RATE_LIMITED, 503 SERVICE_UNAVAILABLE
 
+### 3.3 Rate AI Message (Feedback)
+`PATCH /api/v1/chat/messages/{messageId}/feedback`
+
+**Rule:** Users MUST rate the previous `assistant` message (Good/Bad) before they are allowed to send a new message in the same conversation.
+
+**Frontend sends:**
+```json
+{
+  "feedback": "good" // Enum: "good", "bad"
+}
+
 ---
 
 ## 4) Streaming AI Responses (Optional but Recommended)
