@@ -170,5 +170,5 @@ SESSION_COOKIE_NAME = "session"
 CSRF_COOKIE_HTTPONLY = False  # Need to be accessible by JS to send back in header
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_PATH = "/api"
+CSRF_COOKIE_PATH = "/"  #"/api"
 CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "http://localhost:3000").split(",")

@@ -1,12 +1,18 @@
 import os
+import sys
 import django
 from django.conf import settings
+
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(BASE_DIR)
 
 # Setup Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.local')
 django.setup()
 
 from apps.chat.services.llm_service import LLMService
+from django.conf import settings
 
 def test_llm_connectivity():
     print(f"Testing LLM Provider: {settings.LLM_PROVIDER}")
